@@ -122,11 +122,38 @@ def updateMemoryDraft(draft_id):
 
     if request.method == 'PUT':
         if request.view_args:
-        
-            # TODO: process draft_id, look for draft, update
-            # accordingly
-            response["message"] = "Mocked PUT /api/memories/draft/<draft_id> response"
-            return make_response(jsonify(response), 200)
+
+            memoryDraft = MemoryDraft.query.filter(MemoryDraft.id == draft_id).first()
+
+            if memoryDraft == None:
+                # TODO: process draft_id, look for draft, update
+                # accordingly
+                response["message"] = "MemoryDraft with current ID was not found"
+                return make_response(jsonify(response), 404)
+
+            data = request.get_json()
+            if not data:
+                response["message"] = "No input data provided"
+                return make_response(jsonify(response), 400)
+
+            try:
+                from .models import memory_draft_schema
+                
+                memory_draft = memory_draft_schema.load(data)
+
+                username = get_jwt_identity()
+                user = User.query.filter(User.username == username).first()
+
+                memory_draft.user_id=user.id
+
+                db.session.add(memory_draft)
+                db.session.commit()
+
+                response["memory_draft"] = memory_draft_schema.dump(memory_draft)
+                return make_response(jsonify(response), 200)
+            except:
+                response["message"] = "Error occured during request processing"
+                return make_response(jsonify(response), 500)
         else:
             response["message"] = "No query parameters received"
             return make_response(jsonify(response), 200)
